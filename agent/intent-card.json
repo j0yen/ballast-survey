@@ -1,0 +1,116 @@
+{
+  "schema": "autobuilder.intent_card.v1",
+  "prd_source": "/home/jsy/wintermute/autobuilder/PRD-ballast-survey.md",
+  "root_motivation": "The laptop disk is 94% full with 205G of Rust build artifacts and no structured inventory — every reclamation decision today is a manual guess; ballast-survey makes the measurement first-class so subsequent deletion tools (ballast-reap, ballast-guard) can act on ground truth rather than ad-hoc du sweeps.",
+  "user_persona": "Developer (Joe Yen) running automated build jobs on a single laptop that is frequently disk-pressure-bound; uses wintermute tooling daily and needs a machine-readable inventory to safely free space without guessing.",
+  "unfakeable_metric": {
+    "name": "acceptance_tests_passing",
+    "lower_is_better": false,
+    "harness_command": "cargo test --workspace 2>&1 | grep -E 'test result' | grep -oP '[0-9]+ passed' | awk '{print $1}'",
+    "target": 8
+  },
+  "acceptance_criteria": [
+    {
+      "id": "AC1",
+      "level": "MUST",
+      "description": "`ballast-survey --json` against a fixture tree emits a JSON array of entries, each with `path`, `kind`, `bytes`, `entries`, `mtime`, `age_days`, `crate`.",
+      "test": "tests/acceptance_ac1.rs::test_json_output_fields"
+    },
+    {
+      "id": "AC2",
+      "level": "MUST",
+      "description": "Entries are sorted by `bytes` descending; the summary header reports `reclaimable_bytes` equal to the sum of entry `bytes`.",
+      "test": "tests/acceptance_ac2.rs::test_sorted_and_summary"
+    },
+    {
+      "id": "AC3",
+      "level": "MUST",
+      "description": "A nested reclaimable dir (e.g. a `node_modules` inside a `target`) is counted exactly once — the outer match wins, no double-counting.",
+      "test": "tests/acceptance_ac3.rs::test_no_double_counting"
+    },
+    {
+      "id": "AC4",
+      "level": "MUST",
+      "description": "`--min-size 100M` excludes every entry below the floor.",
+      "test": "tests/acceptance_ac4.rs::test_min_size_filter"
+    },
+    {
+      "id": "AC5",
+      "level": "MUST",
+      "description": "Age math is deterministic under `--now <rfc3339>` (no dependence on wall clock); a fixture with a known mtime yields a known `age_days`.",
+      "test": "tests/acceptance_ac5.rs::test_deterministic_age"
+    },
+    {
+      "id": "AC6",
+      "level": "MUST",
+      "description": "The tool never writes to or deletes any scanned path (verified: a read-only fixture dir survives a full run unchanged).",
+      "test": "tests/acceptance_ac6.rs::test_read_only"
+    },
+    {
+      "id": "AC7",
+      "level": "MUST",
+      "description": "`--help` documents every flag; exit 0 on success, non-zero on an unreadable root with a clear stderr message.",
+      "test": "tests/acceptance_ac7.rs::test_help_and_exit_codes"
+    },
+    {
+      "id": "AC8",
+      "level": "MUST",
+      "description": "`cargo test` green; `cargo clippy` clean on the crate's own code.",
+      "test": "cargo test --workspace && cargo clippy --workspace -- -D warnings"
+    }
+  ],
+  "scope": [
+    "Walk one or more root directories for reclaimable subtrees by rule (rust target/, node_modules/, .venv/, __pycache__, ~/.cache children, ~/.cargo/registry/cache, ~/.cargo/git/checkouts)",
+    "Size each matched subtree (apparent size), record entry count, mtime, age_days, owning crate/dir name",
+    "Emit structured JSON sorted by bytes descending with a summary header",
+    "Support --json flag for machine output, --root flags for multiple roots, --min-size floor filter, --now for deterministic age math",
+    "Human-readable table output as default"
+  ],
+  "non_goals": [
+    "Deleting or modifying any scanned file or directory",
+    "Network access of any kind",
+    "Scheduling or daemon operation",
+    "Integration with ballast-reap or ballast-guard (those are separate tools)",
+    "Scanning paths outside explicitly-specified roots",
+    "Supporting Windows or macOS platform-specific cache locations"
+  ],
+  "hard_constraints": {
+    "rust_edition": "2024",
+    "target_kind": "cli",
+    "deny_unsafe": true,
+    "max_deps": 8,
+    "msrv": "1.85",
+    "additional": {
+      "no_wall_clock_in_lib": "All time-dependent logic must accept a caller-supplied DateTime; wall-clock read only at CLI boundary"
+    }
+  },
+  "five_whys_trace": [
+    {
+      "why": 1,
+      "q": "Why do you want a disk inventory CLI?",
+      "a": "The laptop is 94% full and du sweeps are ad-hoc — I need a structured view of what's safe to delete."
+    },
+    {
+      "why": 2,
+      "q": "Why is a structured view needed instead of just running `du` again?",
+      "a": "du output is per-human-run, unsorted by reclamability, and can't be piped to automated tools like ballast-reap."
+    },
+    {
+      "why": 3,
+      "q": "Why does the automated tool need JSON rather than raw du output?",
+      "a": "ballast-reap needs typed fields (kind, age_days, mtime) to make safe deletion decisions; raw bytes aren't enough."
+    }
+  ],
+  "ambiguities_resolved": [
+    {
+      "question": "Should cargo target/ dirs be detected by name alone or require side-car files?",
+      "resolution": "Detect by name `target/` AND (contains CARGO_OK or .rustc_info.json) OR (parent dir contains Cargo.toml) — reduces false positives on non-cargo target/ dirs."
+    },
+    {
+      "question": "What is the --min-size unit format?",
+      "resolution": "Human-readable suffixes: 100M, 1G, etc. — parsed by humansize conventions."
+    }
+  ],
+  "created_at": "2026-06-16T00:00:00Z",
+  "intent_slug": "ballast-survey"
+}
