@@ -1,5 +1,6 @@
 //! Classification of reclaimable directory kinds.
 
+use crate::cloudaware::CloudAwareInfo;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -40,4 +41,8 @@ pub struct SurveyEntry {
     pub age_days: i64,
     /// Name of the owning crate or directory (the immediate parent's name).
     pub crate_name: String,
+    /// Cloud-aware fossil classification (only present for `RustTarget` entries
+    /// when cloud-aware mode is enabled).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cloud_info: Option<CloudAwareInfo>,
 }

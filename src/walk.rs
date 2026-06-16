@@ -50,6 +50,7 @@ pub fn scan_root(root: &Path, now: DateTime<Utc>) -> Vec<SurveyEntry> {
                     mtime: size.mtime,
                     age_days,
                     crate_name,
+                    cloud_info: None,
                 });
                 // Do NOT enqueue — don't descend into matched reclaimable dirs.
             } else {
