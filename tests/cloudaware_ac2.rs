@@ -23,7 +23,7 @@ fn test_no_installed_binary_is_stale_uninstalled() {
     let adopt_paths = Some(vec![]);
     let overrides = BinNameOverrides::new();
 
-    let info = classify_entry("orphan", tmp.path(), target_mtime, &overrides, &adopt_paths);
+    let info = classify_entry("orphan", tmp.path(), target_mtime, &overrides, adopt_paths.as_ref());
 
     assert!(!info.fossil, "fossil must be false when no binary installed");
     assert!(!info.installed_newer_than_target, "installed_newer must be false");

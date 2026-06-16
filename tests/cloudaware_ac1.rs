@@ -65,7 +65,7 @@ fn test_fossil_when_installed_binary_newer_than_target() {
         proj_tmp.path(),
         target_mtime,
         &overrides,
-        &adopt_paths,
+        adopt_paths.as_ref(),
     );
 
     assert!(info.fossil, "entry should be fossil when installed binary is newer");
@@ -98,7 +98,7 @@ fn test_not_fossil_when_no_installed_binary() {
         proj_tmp.path(),
         target_mtime,
         &overrides,
-        &adopt_paths,
+        adopt_paths.as_ref(),
     );
 
     assert!(!info.fossil, "entry should NOT be fossil when no installed binary");

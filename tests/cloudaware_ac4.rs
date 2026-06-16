@@ -41,7 +41,7 @@ fn test_fossil_true_without_cloud_marker() {
     let adopt_paths = Some(vec![bin_path]);
     let overrides = BinNameOverrides::new();
 
-    let info = classify_entry("mypkg", proj_tmp.path(), target_mtime, &overrides, &adopt_paths);
+    let info = classify_entry("mypkg", proj_tmp.path(), target_mtime, &overrides, adopt_paths.as_ref());
 
     // cloud_built may be true if AUTOBUILDER_CLOUD is set in env, so we
     // only check the relationship: fossil is driven by mtime proof, not cloud_built.
@@ -67,7 +67,7 @@ fn test_cloud_built_set_from_marker_file() {
     let adopt_paths = Some(vec![bin_path]);
     let overrides = BinNameOverrides::new();
 
-    let info = classify_entry("mypkg", proj_tmp.path(), target_mtime, &overrides, &adopt_paths);
+    let info = classify_entry("mypkg", proj_tmp.path(), target_mtime, &overrides, adopt_paths.as_ref());
 
     assert!(info.cloud_built, "cloud_built should be true from .autobuilder_cloud marker");
     assert!(info.fossil, "fossil must be true when binary is newer");
@@ -101,7 +101,7 @@ fn test_cloud_built_set_from_autobuilder_json() {
     let adopt_paths = Some(vec![bin_path]);
     let overrides = BinNameOverrides::new();
 
-    let info = classify_entry("jsonpkg", proj_tmp.path(), target_mtime, &overrides, &adopt_paths);
+    let info = classify_entry("jsonpkg", proj_tmp.path(), target_mtime, &overrides, adopt_paths.as_ref());
 
     assert!(
         info.cloud_built,

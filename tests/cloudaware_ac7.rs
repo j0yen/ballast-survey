@@ -60,7 +60,7 @@ fn test_json_round_trip_with_cloud_info() {
         proj_tmp.path(),
         target_mtime,
         &overrides,
-        &adopt_paths,
+        adopt_paths.as_ref(),
     );
 
     // JSON round-trip the CloudAwareInfo struct.

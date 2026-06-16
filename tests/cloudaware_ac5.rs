@@ -33,7 +33,7 @@ fn test_adopt_source_when_adopt_paths_provided() {
     let adopt_paths = Some(vec![bin_path]);
     let overrides = BinNameOverrides::new();
 
-    let info = classify_entry("pkg", tmp.path(), target_mtime, &overrides, &adopt_paths);
+    let info = classify_entry("pkg", tmp.path(), target_mtime, &overrides, adopt_paths.as_ref());
 
     // Binary was found via the adopt_paths list → source should be Adopt.
     assert_eq!(
@@ -53,7 +53,7 @@ fn test_no_adopt_falls_back_to_probe() {
     let overrides = BinNameOverrides::new();
 
     // This should NOT panic / error — it should fall back to probe and exit 0.
-    let info = classify_entry("pkg", tmp.path(), target_mtime, &overrides, &adopt_paths);
+    let info = classify_entry("pkg", tmp.path(), target_mtime, &overrides, adopt_paths.as_ref());
 
     // Whatever the result, the install_source must be Probe when adopt is absent.
     assert_eq!(

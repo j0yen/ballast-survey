@@ -43,7 +43,7 @@ pub enum ReapSafety {
 impl ReapSafety {
     /// Numeric rank — lower is safer to reclaim (higher priority reap).
     #[must_use]
-    pub fn rank(&self) -> u8 {
+    pub const fn rank(&self) -> u8 {
         match self {
             Self::Fossil => 0,
             Self::StaleInstalled => 1,
@@ -102,7 +102,7 @@ fn detect_cloud_built(crate_dir: &Path) -> bool {
     for manifest in &manifest_candidates {
         if let Ok(content) = std::fs::read_to_string(manifest) {
             if let Ok(v) = serde_json::from_str::<serde_json::Value>(&content) {
-                if v.get("cloud").and_then(|c| c.as_bool()).unwrap_or(false) {
+                if v.get("cloud").and_then(serde_json::Value::as_bool).unwrap_or(false) {
                     return true;
                 }
             }
@@ -112,7 +112,7 @@ fn detect_cloud_built(crate_dir: &Path) -> bool {
     // 3. Environment variable
     matches!(
         std::env::var("AUTOBUILDER_CLOUD").as_deref(),
-        Ok("1") | Ok("true") | Ok("yes")
+        Ok("1" | "true" | "yes")
     )
 }
 
@@ -161,8 +161,7 @@ fn file_mtime(meta: &std::fs::Metadata) -> Option<DateTime<Utc>> {
     use std::time::SystemTime;
     let st = meta.modified().ok()?;
     let duration = st.duration_since(SystemTime::UNIX_EPOCH).ok()?;
-    #[allow(clippy::cast_possible_truncation)]
-    let secs = duration.as_secs() as i64;
+    let secs = i64::try_from(duration.as_secs()).ok()?;
     DateTime::from_timestamp(secs, 0)
 }
 
@@ -178,13 +177,12 @@ pub fn classify_entry(
     crate_dir: &Path,
     target_mtime: DateTime<Utc>,
     overrides: &BinNameOverrides,
-    adopt_paths: &Option<Vec<PathBuf>>,
+    adopt_paths: Option<&Vec<PathBuf>>,
 ) -> CloudAwareInfo {
     // Determine the binary name to look for.
     let bin_name = overrides
         .get(crate_name)
-        .map(String::as_str)
-        .unwrap_or(crate_name);
+        .map_or(crate_name, String::as_str);
 
     // 1. Try `adopt` output first.
     let mut install_source = InstallSource::Probe;
@@ -195,8 +193,7 @@ pub fn classify_entry(
         // Search the adopt list for a binary matching our bin_name.
         let matched = paths.iter().find(|p| {
             p.file_name()
-                .map(|f| f.to_string_lossy() == bin_name)
-                .unwrap_or(false)
+                .is_some_and(|f| f.to_string_lossy() == bin_name)
         });
         if let Some(path) = matched {
             if let Ok(meta) = std::fs::metadata(path) {
@@ -217,10 +214,7 @@ pub fn classify_entry(
     }
 
     // Compute derived booleans.
-    let installed_newer_than_target = match installed_mtime {
-        Some(imt) => imt > target_mtime,
-        None => false,
-    };
+    let installed_newer_than_target = installed_mtime.is_some_and(|imt| imt > target_mtime);
 
     let cloud_built = detect_cloud_built(crate_dir);
     let fossil = installed_bin.is_some() && installed_newer_than_target;
@@ -251,7 +245,7 @@ pub fn classify_entry(
 /// `overrides` maps crate names to binary names for crates whose installed binary
 /// does not match the crate directory name.
 pub fn annotate_entries(
-    entries: &mut Vec<crate::classify::SurveyEntry>,
+    entries: &mut [crate::classify::SurveyEntry],
     overrides: &BinNameOverrides,
 ) {
     use crate::classify::EntryKind;
@@ -274,7 +268,7 @@ pub fn annotate_entries(
             crate_dir,
             entry.mtime,
             overrides,
-            &adopt_paths,
+            adopt_paths.as_ref(),
         ));
     }
 }

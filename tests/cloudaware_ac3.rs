@@ -46,7 +46,7 @@ fn test_bin_name_override_resolves_fossil() {
     let mut overrides = BinNameOverrides::new();
     overrides.insert("alpha".to_owned(), "a".to_owned());
 
-    let info = classify_entry("alpha", proj_tmp.path(), target_mtime, &overrides, &adopt_paths);
+    let info = classify_entry("alpha", proj_tmp.path(), target_mtime, &overrides, adopt_paths.as_ref());
 
     assert!(
         info.fossil,
@@ -74,7 +74,7 @@ fn test_without_override_crate_name_used() {
     // No override → looks for "alpha", not "a" → no match
     let overrides = BinNameOverrides::new();
 
-    let info = classify_entry("alpha", proj_tmp.path(), target_mtime, &overrides, &adopt_paths);
+    let info = classify_entry("alpha", proj_tmp.path(), target_mtime, &overrides, adopt_paths.as_ref());
 
     // Without override, "alpha" binary not found, so fossil = false
     // (unless probe finds ~/.local/bin/alpha which shouldn't exist in CI)

@@ -190,8 +190,7 @@ fn print_table(output: &ballast_survey::Output, no_cloudaware: bool) {
                 let safety = if e.kind == EntryKind::RustTarget {
                     e.cloud_info
                         .as_ref()
-                        .map(|ci| format!("{:?}", ci.reap_safety))
-                        .unwrap_or_else(|| "-".to_owned())
+                        .map_or_else(|| "-".to_owned(), |ci| format!("{:?}", ci.reap_safety))
                 } else {
                     "-".to_owned()
                 };
