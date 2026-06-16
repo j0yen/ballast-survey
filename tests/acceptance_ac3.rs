@@ -29,7 +29,7 @@ fn test_no_double_counting() {
     let now = Utc::now();
     let roots = &[tmp.path().to_path_buf()];
 
-    let output = ballast_survey::survey(roots, 0, now).expect("survey");
+    let output = ballast_survey::survey(roots, 0, now);
 
     // The target/ dir should be found exactly once.
     let target_entries: Vec<_> = output

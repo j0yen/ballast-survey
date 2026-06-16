@@ -2,7 +2,7 @@
 //!
 //! Walks one or more root directories, finds reclaimable subtrees (Rust
 //! `target/` dirs, `node_modules/`, `.venv/`, `__pycache__/`, cargo caches,
-//! large `~/.cache` children), sizes each, records metadata, and emits a
+//! large `~/.cache` children), sizes each, records metadata, and emits
 //! structured JSON inventory sorted by reclaimable bytes.
 //!
 //! **Design invariant:** no wall-clock reads in library code.  All
@@ -18,7 +18,6 @@ pub use classify::{EntryKind, SurveyEntry};
 pub use emit::{Output, Summary};
 pub use walk::scan_root;
 
-use anyhow::Result;
 use chrono::{DateTime, Utc};
 use std::path::Path;
 
@@ -26,19 +25,17 @@ use std::path::Path;
 ///
 /// `now` is the reference instant used for `age_days` computation — pass the
 /// wall-clock value at the CLI boundary, or a fixed instant in tests.
-///
-/// # Errors
-/// Returns an error if any root is unreadable.
+#[must_use]
 pub fn survey(
     roots: &[impl AsRef<Path>],
     min_bytes: u64,
     now: DateTime<Utc>,
-) -> Result<Output> {
+) -> Output {
     let mut entries: Vec<SurveyEntry> = Vec::new();
 
     for root in roots {
         let root = root.as_ref();
-        let mut found = walk::scan_root(root, now)?;
+        let mut found = walk::scan_root(root, now);
         entries.append(&mut found);
     }
 
@@ -52,12 +49,12 @@ pub fn survey(
 
     let reclaimable_bytes: u64 = entries.iter().map(|e| e.bytes).sum();
 
-    Ok(Output {
+    Output {
         summary: Summary {
             reclaimable_bytes,
             entry_count: entries.len(),
             scanned_at: now,
         },
         entries,
-    })
+    }
 }

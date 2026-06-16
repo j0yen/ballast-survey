@@ -25,7 +25,7 @@ fn test_min_size_filter() {
     let roots = &[tmp.path().to_path_buf()];
 
     // Without floor: should find the small entry.
-    let without_floor = ballast_survey::survey(roots, 0, now).expect("survey");
+    let without_floor = ballast_survey::survey(roots, 0, now);
     assert!(
         !without_floor.entries.is_empty(),
         "expected entries without min-size filter"
@@ -33,7 +33,7 @@ fn test_min_size_filter() {
 
     // With 100M floor (104_857_600 bytes): tiny entry should be excluded.
     let min_100m: u64 = 100 * 1024 * 1024;
-    let with_floor = ballast_survey::survey(roots, min_100m, now).expect("survey");
+    let with_floor = ballast_survey::survey(roots, min_100m, now);
     assert!(
         with_floor.entries.is_empty(),
         "expected no entries above 100M floor for tiny fixture, got: {:?}",

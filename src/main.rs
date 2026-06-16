@@ -9,7 +9,7 @@ use humansize::{BINARY, format_size};
 /// Read-only inventory of reclaimable disk weight.
 ///
 /// Walks one or more root directories, finds reclaimable subtrees (Rust
-/// target/ dirs, node_modules/, .venv/, __pycache__/, cargo caches), sizes
+/// `target/` dirs, `node_modules/`, `.venv/`, `__pycache__/`, cargo caches), sizes
 /// each, and emits a structured inventory sorted by reclaimable bytes.
 ///
 /// The tool never modifies, writes to, or deletes any scanned path.
@@ -37,7 +37,10 @@ struct Args {
 
 fn main() {
     if let Err(e) = run() {
-        eprintln!("error: {e:#}");
+        #[allow(clippy::print_stderr)]
+        {
+            eprintln!("error: {e:#}");
+        }
         std::process::exit(1);
     }
 }
@@ -57,7 +60,7 @@ fn run() -> Result<()> {
     let raw_roots: Vec<String> = if args.root.is_empty() {
         vec!["~/wintermute".to_owned()]
     } else {
-        args.root.clone()
+        args.root
     };
 
     let roots = expand_roots(&raw_roots).context("failed to resolve scan roots")?;
@@ -69,7 +72,7 @@ fn run() -> Result<()> {
     };
 
     // Run the survey.
-    let output = ballast_survey::survey(&roots, min_bytes, now)?;
+    let output = ballast_survey::survey(&roots, min_bytes, now);
 
     if args.json {
         let json = serde_json::to_string_pretty(&output)
@@ -92,7 +95,8 @@ fn parse_size(s: &str) -> Result<u64> {
         anyhow::bail!("size string is empty");
     }
 
-    let (digits, suffix) = s.split_at(s.len() - s.chars().rev().take_while(|c| c.is_alphabetic()).count());
+    let alpha_count = s.chars().rev().take_while(|c| c.is_alphabetic()).count();
+    let (digits, suffix) = s.split_at(s.len() - alpha_count);
     let value: u64 = digits.trim().parse().with_context(|| format!("not a number: {digits}"))?;
 
     let multiplier: u64 = match suffix.to_ascii_uppercase().as_str() {
@@ -118,8 +122,8 @@ fn print_table(output: &ballast_survey::Output) {
             s.scanned_at.format("%Y-%m-%dT%H:%M:%SZ"),
         );
         println!(
-            "{:<60} {:>12} {:>10} {:>8}  {}",
-            "PATH", "SIZE", "KIND", "AGE", "CRATE"
+            "{:<60} {:>12} {:>10} {:>8}  CRATE",
+            "PATH", "SIZE", "KIND", "AGE",
         );
         println!("{}", "-".repeat(100));
 

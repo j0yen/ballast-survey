@@ -39,7 +39,7 @@ fn test_read_only() {
 
     // Run the survey.
     let roots = &[root.clone()];
-    let _output = ballast_survey::survey(roots, 0, now).expect("survey");
+    let _output = ballast_survey::survey(roots, 0, now);
 
     // Snapshot after.
     let after = collect_snapshot(&root);

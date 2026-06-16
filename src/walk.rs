@@ -1,12 +1,11 @@
 //! Directory walker that finds reclaimable subtrees.
 //!
-//! Uses a manual stack-based walk with early pruning: once a reclaimable dir
-//! is matched, it is not descended into (preventing double-counting of nested
-//! reclaimable dirs, e.g. `node_modules` inside `target/`).
+//! Uses a manual stack-based BFS walk with early pruning: once a reclaimable
+//! dir is matched, it is not descended into (preventing double-counting of
+//! nested reclaimable dirs, e.g. `node_modules` inside `target/`).
 
 use crate::classify::{EntryKind, SurveyEntry};
 use crate::size::size_dir;
-use anyhow::Result;
 use chrono::{DateTime, Utc};
 use std::collections::VecDeque;
 use std::fs;
@@ -17,32 +16,18 @@ use std::path::{Path, PathBuf};
 /// Returns all matched entries with their sizes and metadata.  The walk does
 /// **not** descend into matched directories, so nested reclaimable dirs are
 /// counted as part of their outermost ancestor.
-///
-/// # Errors
-/// Returns an error if `root` cannot be read.
-pub fn scan_root(root: &Path, now: DateTime<Utc>) -> Result<Vec<SurveyEntry>> {
+#[must_use]
+pub fn scan_root(root: &Path, now: DateTime<Utc>) -> Vec<SurveyEntry> {
     let mut results: Vec<SurveyEntry> = Vec::new();
-    // BFS queue of directories to process.
     let mut queue: VecDeque<PathBuf> = VecDeque::new();
     queue.push_back(root.to_path_buf());
 
     while let Some(dir) = queue.pop_front() {
-        // Read directory entries; skip unreadable dirs silently.
-        let read_dir = match fs::read_dir(&dir) {
-            Ok(rd) => rd,
-            Err(_) => continue,
-        };
+        let Ok(read_dir) = fs::read_dir(&dir) else { continue };
 
         for entry_result in read_dir {
-            let entry = match entry_result {
-                Ok(e) => e,
-                Err(_) => continue,
-            };
-
-            let ft = match entry.file_type() {
-                Ok(ft) => ft,
-                Err(_) => continue,
-            };
+            let Ok(entry) = entry_result else { continue };
+            let Ok(ft) = entry.file_type() else { continue };
 
             if !ft.is_dir() {
                 continue;
@@ -53,11 +38,7 @@ pub fn scan_root(root: &Path, now: DateTime<Utc>) -> Result<Vec<SurveyEntry>> {
             let name = child_name.to_string_lossy();
 
             if let Some(kind) = classify_dir_name(name.as_ref(), &child_path) {
-                let size = match size_dir(&child_path) {
-                    Ok(s) => s,
-                    Err(_) => continue,
-                };
-
+                let size = size_dir(&child_path);
                 let age_days = (now - size.mtime).num_days();
                 let crate_name = parent_name(&child_path);
 
@@ -70,19 +51,17 @@ pub fn scan_root(root: &Path, now: DateTime<Utc>) -> Result<Vec<SurveyEntry>> {
                     age_days,
                     crate_name,
                 });
-                // Do NOT enqueue this dir — don't descend into matched dirs.
+                // Do NOT enqueue — don't descend into matched reclaimable dirs.
             } else {
-                // Not reclaimable at this level — enqueue for further descent.
                 queue.push_back(child_path);
             }
         }
     }
 
-    Ok(results)
+    results
 }
 
-/// Classify a directory by its name and path, returning the kind if it is
-/// reclaimable, or `None` if it should be descended into.
+/// Classify a directory by its name and path, returning the kind if reclaimable.
 fn classify_dir_name(name: &str, path: &Path) -> Option<EntryKind> {
     match name {
         "node_modules" => Some(EntryKind::NodeModules),
@@ -129,6 +108,5 @@ fn is_cargo_cache(path: &Path) -> bool {
 fn parent_name(path: &Path) -> String {
     path.parent()
         .and_then(|p| p.file_name())
-        .map(|n| n.to_string_lossy().into_owned())
-        .unwrap_or_else(|| "<root>".to_owned())
+        .map_or_else(|| "<root>".to_owned(), |n| n.to_string_lossy().into_owned())
 }

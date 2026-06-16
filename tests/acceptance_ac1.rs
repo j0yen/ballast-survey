@@ -30,7 +30,7 @@ fn test_json_output_fields() {
     let now = Utc::now();
     let roots = &[tmp.path().to_path_buf()];
 
-    let output = ballast_survey::survey(roots, 0, now).expect("survey failed");
+    let output = ballast_survey::survey(roots, 0, now);
 
     assert!(
         !output.entries.is_empty(),

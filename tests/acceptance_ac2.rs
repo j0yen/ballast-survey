@@ -30,7 +30,7 @@ fn test_sorted_and_summary() {
     let now = Utc::now();
     let roots = &[tmp.path().to_path_buf()];
 
-    let output = ballast_survey::survey(roots, 0, now).expect("survey");
+    let output = ballast_survey::survey(roots, 0, now);
 
     // Entries must be sorted descending by bytes.
     let entries = &output.entries;
